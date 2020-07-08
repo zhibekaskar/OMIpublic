@@ -54,9 +54,8 @@ if(-not $secureModifyCookie){
     throw "Could not get secureModifyCookie from Session"
 }
 
-Write-Host $omiSession
+#Write-Host $omiSession
 Invoke-WebRequest -Uri "https://itsomi.tools.cihs.gov.on.ca/topaz/login.jsp" | Select-Object StatusDescription
-#$omi = New-Object -ComObject 'OMi.Application'
 
 if($omiSession) {
     Write-Host "Session is running"     

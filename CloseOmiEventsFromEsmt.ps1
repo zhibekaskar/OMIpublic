@@ -55,9 +55,9 @@ if(-not $secureModifyCookie){
 }
 
 #Write-Host $omiSession
-Invoke-WebRequest -Uri "https://itsomi.tools.cihs.gov.on.ca/topaz/login.jsp" | Select-Object StatusDescription
+$a = Invoke-WebRequest -Uri "https://itsomi.tools.cihs.gov.on.ca/topaz/login.jsp" | Select-Object StatusDescription
 
-if($omiSession) {
+if($a) {
     Write-Host "Session is running"     
 
     foreach($event in $eventList.event_list.event)  {

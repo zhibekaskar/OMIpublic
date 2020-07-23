@@ -1,5 +1,4 @@
 #!/usr/bin/env pwsh
-
 Param(
     [Parameter(Mandatory = $false)]
     [string] $OmiUrl = "https://itsomi.tools.cihs.gov.on.ca",
@@ -21,13 +20,24 @@ Param(
 
     [Parameter(Mandatory = $false)]
     [switch] $CloseResolved = $true
-) 
+)
+    try{
+        $token =  Get-ITSToolsKeycloakToken -ClientId $ClientId -ClientSecret $ClientSecret -Refresh
+    }catch{
+        $token = Get-ITSToolsKeycloakToken -ClientId $ClientId -ClientSecret $ClientSecret -Cache -Verbose
+    }
 
-try{
-    $token =  Get-ITSToolsKeycloakToken -ClientId $ClientId -ClientSecret $ClientSecret -Refresh
-}catch{
-    $token = Get-ITSToolsKeycloakToken -ClientId $ClientId -ClientSecret $ClientSecret -Cache -Verbose
-}
+    <#Function CanPing ($Server) {
+        $error.clear()
+        $tmp = Test-Connection $Server - ErrorAction SilentlyContinue 
+    
+        if ($?){
+            Write-Host "Succeeded"; Return $true
+        } else {
+            Write-Host "failed"; Return $false
+        }
+    }#>
+    
 
 $EventCloseXml = "<event xmlns=""http://www.hp.com/2009/software/opr/data_model""><state>closed</state></event>"
 $AnnotationXml = @"
@@ -52,18 +62,25 @@ $eventList = Invoke-RestMethod -Uri "$($EventListUrl)?query=$omiQuery&page_size=
 $secureModifyCookie = $omiSession.Cookies.GetCookies($OmiUrl) | Where-Object {$_.name -eq "secureModifyToken" }
 if(-not $secureModifyCookie){
     throw "Could not get secureModifyCookie from Session"
+    #exit 
 }
 
-#Write-Host $omiSession
+# $url="http://ctsbigdcemmon303.mgmt.cihs.gov.on.ca"
+$url="https://itsomi.tools.cihs.gov.on.ca/topaz/login.jsp"
+$response = Invoke-WebRequest -URI $url
+if ($?) {
+$ReturnCode= $response.StatusCode
+Write-Host "Status Code is $ReturnCode"
+
+<#Write-Host $omiSession
 $a = Invoke-WebRequest -Uri "https://itsomi.tools.cihs.gov.on.ca/topaz/login.jsp" | Select-Object StatusDescription
 
-if($a) {
-    Write-Host "Session is running"     
-
-    foreach($event in $eventList.event_list.event)  {
+if($a) {#>
+    #Write-Host "Session is running"     
+    foreach($event in $eventList.event_list.event) {
         # Write-Host "$($event.id) $($event.state) $($incident.status)"   
         $externalId = $event.control_transferred_to.external_id
-        if($externalId -eq $null){
+        if($externalId -eq $null) {
              continue
         } 
         $externalIncidentPath = $IncidentPath -f $externalId
@@ -95,10 +112,22 @@ if($a) {
             }  
         }
     }
+<#} else { 
+    # trying to catch errors when OMi is off
+    # to check what type of error was received "$error[0].exception.gettype().fullname"
+    try {
+        $a = Invoke-WebRequest -Uri "https://itsomi.tools.cihs.gov.on.ca/topaz/login.jsp" | Select-Object StatusDescription
+    } catch [System.Management.Automation.RuntimeException], [System.Net.HttpWebRequest] {
+            Write-Host "Session is NOT running"
+            exit
+    }
+        #Write-Host "Session is NOT running"
+        #exit
+}#>
 
 } else {
-    Write-Host "Session is NOT running"
-    #exit 
-    #$host.Exit()
-    $host.SetShouldExit()
-} 
+    $ReturnCode= $response.StatusCode
+    Write-Host "Status Code is $ReturnCode"
+    Write-Host "$url not reachable"
+    exit
+}

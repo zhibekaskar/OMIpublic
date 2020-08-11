@@ -21,6 +21,9 @@ Param(
     [Parameter(Mandatory = $false)]
     [switch] $CloseResolved = $true
 )
+
+    #$ErrorActionPreference='Stop'
+
     try{
         $token =  Get-ITSToolsKeycloakToken -ClientId $ClientId -ClientSecret $ClientSecret -Refresh
     }catch{
@@ -67,7 +70,17 @@ if(-not $secureModifyCookie){
 
 # $url="http://ctsbigdcemmon303.mgmt.cihs.gov.on.ca"
 $url="https://itsomi.tools.cihs.gov.on.ca/topaz/login.jsp"
-$response = Invoke-WebRequest -URI $url
+#$response = Invoke-WebRequest -URI $url
+
+
+try {
+    $response = Invoke-WebRequest -URI $url
+}
+catch [System.Net.WebException],[System.IO.IOException] {
+    "Unable to connect $url"
+    break
+}
+
 if ($?) {
 $ReturnCode= $response.StatusCode
 Write-Host "Status Code is $ReturnCode"

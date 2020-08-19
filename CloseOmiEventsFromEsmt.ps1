@@ -22,26 +22,23 @@ Param(
     [switch] $CloseResolved = $true
 )
 
-    #$ErrorActionPreference='Stop'
-
     try{
         $token =  Get-ITSToolsKeycloakToken -ClientId $ClientId -ClientSecret $ClientSecret -Refresh
     }catch{
         $token = Get-ITSToolsKeycloakToken -ClientId $ClientId -ClientSecret $ClientSecret -Cache -Verbose
     }
 
-    <#Function CanPing ($Server) {
-        $error.clear()
-        $tmp = Test-Connection $Server - ErrorAction SilentlyContinue 
-    
-        if ($?){
-            Write-Host "Succeeded"; Return $true
-        } else {
-            Write-Host "failed"; Return $false
-        }
-    }#>
-    
 
+    $url="https://itsomi.tools.cihs.gov.on.ca/topaz/login.jsp"
+    try {
+        $response = Invoke-WebRequest -URI $url
+    }
+    catch [System.Net.WebException],[System.IO.IOException], [System.Management.Automation.RuntimeException], [System.Net.HttpWebRequest] {
+        "Unable to connect $url"
+        "Session is NOT running"
+        break
+    }
+    
 $EventCloseXml = "<event xmlns=""http://www.hp.com/2009/software/opr/data_model""><state>closed</state></event>"
 $AnnotationXml = @"
 <annotation xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="http://www.hp.com/2009/software/opr/data_model" type="urn:x-hp:2009:software:data_model:opr:type:event:annotation" version="1.0">
@@ -65,82 +62,43 @@ $eventList = Invoke-RestMethod -Uri "$($EventListUrl)?query=$omiQuery&page_size=
 $secureModifyCookie = $omiSession.Cookies.GetCookies($OmiUrl) | Where-Object {$_.name -eq "secureModifyToken" }
 if(-not $secureModifyCookie){
     throw "Could not get secureModifyCookie from Session"
-    #exit 
 }
 
-# $url="http://ctsbigdcemmon303.mgmt.cihs.gov.on.ca"
-$url="https://itsomi.tools.cihs.gov.on.ca/topaz/login.jsp"
-#$response = Invoke-WebRequest -URI $url
 
-
-try {
-    $response = Invoke-WebRequest -URI $url
-}
-catch [System.Net.WebException],[System.IO.IOException] {
-    "Unable to connect $url"
-    break
-}
-
-if ($?) {
 $ReturnCode= $response.StatusCode
 Write-Host "Status Code is $ReturnCode"
-
-<#Write-Host $omiSession
-$a = Invoke-WebRequest -Uri "https://itsomi.tools.cihs.gov.on.ca/topaz/login.jsp" | Select-Object StatusDescription
-
-if($a) {#>
-    #Write-Host "Session is running"     
-    foreach($event in $eventList.event_list.event) {
-        # Write-Host "$($event.id) $($event.state) $($incident.status)"   
-        $externalId = $event.control_transferred_to.external_id
-        if($externalId -eq $null) {
-             continue
-        } 
-        $externalIncidentPath = $IncidentPath -f $externalId
-        $incident = Invoke-ITSTorcaRequest -Method GET -BaseUrl $BaseUrl -Path $externalIncidentPath -AccessToken $token.access_token
-        $incidentStatus = ($IncidentMetadata.field_limits.status.values | Where-Object {$_.number -eq $incident.status}).value
-        if($incident.status -ge 4){
-            if($incident.status -eq 4){
-                $IncidentValue = "Resolved"
-            }
-            if($incident.status -eq 5){
-                $IncidentValue = "Closed"
-            }
-            if($incident.status -eq 6){
-                $IncidentValue = "Cancelled"
-            }
-            $headers = $omiHeaders
-            $headers["X-Secure-Modify-Token"] = $secureModifyCookie.Value
-            $headers["Content-Type"] = "application/xml"
-            $headers["Accept"] = "application/xml"
-            if($CloseResolved){
-                Start-Sleep -Seconds 5
-                $eventUrl = "$EventListUrl/{0}" -f $event.id
-                Write-Host "Closing $($event.id), $($IncidentValue), $($externalId),  $($incident.assignee), $($incident.assigned_group)" 
-                #Write-Output "Closing $($event.id), $($IncidentValue), $($externalId),  $($incident.assignee), $($incident.assigned_group)" | Out-File -append C:\temp\closeOmiIncidents.txt
-                #Invoke-WebRequest -Method Put -Uri $eventUrl -Headers $headers -Body $EventCloseXml -WebSession $omiSession
-            }else{
-                Write-Host "Event $($event.id) $($event.key) state:$($event.state) - Resolved in ESMT - $($incident.incident_number) - $incidentStatus"
-                Write-Host "Resolution $($incident.resolution)"
-            }  
+foreach($event in $eventList.event_list.event) {
+# Write-Host "$($event.id) $($event.state) $($incident.status)"   
+$externalId = $event.control_transferred_to.external_id
+    if($externalId -eq $null) {
+        continue
+    } 
+    $externalIncidentPath = $IncidentPath -f $externalId
+    $incident = Invoke-ITSTorcaRequest -Method GET -BaseUrl $BaseUrl -Path $externalIncidentPath -AccessToken $token.access_token
+    $incidentStatus = ($IncidentMetadata.field_limits.status.values | Where-Object {$_.number -eq $incident.status}).value
+    if($incident.status -ge 4){
+        if($incident.status -eq 4){
+            $IncidentValue = "Resolved"
         }
+        if($incident.status -eq 5){
+            $IncidentValue = "Closed"
+        }
+        if($incident.status -eq 6){
+            $IncidentValue = "Cancelled"
+        }
+        $headers = $omiHeaders
+        $headers["X-Secure-Modify-Token"] = $secureModifyCookie.Value
+        $headers["Content-Type"] = "application/xml"
+        $headers["Accept"] = "application/xml"
+        if($CloseResolved){
+            Start-Sleep -Seconds 5
+            $eventUrl = "$EventListUrl/{0}" -f $event.id
+            Write-Host "Closing $($event.id), $($IncidentValue), $($externalId),  $($incident.assignee), $($incident.assigned_group)" 
+            Write-Output "Closing $($event.id), $($IncidentValue), $($externalId),  $($incident.assignee), $($incident.assigned_group)" | Out-File -append C:\Users\AskarZh\Desktop\CloseEvents.txt
+            #Invoke-WebRequest -Method Put -Uri $eventUrl -Headers $headers -Body $EventCloseXml -WebSession $omiSession
+        }else{
+            Write-Host "Event $($event.id) $($event.key) state:$($event.state) - Resolved in ESMT - $($incident.incident_number) - $incidentStatus"
+            Write-Host "Resolution $($incident.resolution)"
+        }  
     }
-<#} else { 
-    # trying to catch errors when OMi is off
-    # to check what type of error was received "$error[0].exception.gettype().fullname"
-    try {
-        $a = Invoke-WebRequest -Uri "https://itsomi.tools.cihs.gov.on.ca/topaz/login.jsp" | Select-Object StatusDescription
-    } catch [System.Management.Automation.RuntimeException], [System.Net.HttpWebRequest] {
-            Write-Host "Session is NOT running"
-            exit
-    }
-        #Write-Host "Session is NOT running"
-        #exit
-}#>
-
-} else {
-    $ReturnCode= $response.StatusCode
-    Write-Host "Status Code is $ReturnCode"
-    Write-Host "$url not reachable"
-    exit
 }

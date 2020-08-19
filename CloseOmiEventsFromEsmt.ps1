@@ -4,19 +4,19 @@ Param(
     [string] $OmiUrl = "https://itsomi.tools.cihs.gov.on.ca",
 
     [Parameter(Mandatory = $false)]
-    [string] $OmiUsername = "admin",
+    [string] $OmiUsername = "",
 
     [Parameter(Mandatory = $false)]
-    [securestring] $OmiPassword = ("P@55w0rd" | ConvertTo-SecureString -AsPlainText -Force),
+    [securestring] $OmiPassword = ("" | ConvertTo-SecureString -AsPlainText -Force),
 
     [Parameter(Mandatory = $false)]
     [string] $ElixirUrl = "https://elixir-prod.tools.cihs.gov.on.ca",
 
     [Parameter(Mandatory = $false)]
-    [string] $ClientId = "consumer-omi-service",
+    [string] $ClientId = "",
 
     [Parameter(Mandatory = $false)]
-    [securestring] $ClientSecret = ("1f153266-6d74-4770-bb7c-8b821159b7dc" | ConvertTo-SecureString -AsPlainText -Force),
+    [securestring] $ClientSecret = ("" | ConvertTo-SecureString -AsPlainText -Force),
 
     [Parameter(Mandatory = $false)]
     [switch] $CloseResolved = $true

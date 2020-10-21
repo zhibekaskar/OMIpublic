@@ -95,7 +95,7 @@ $externalId = $event.control_transferred_to.external_id
             $eventUrl = "$EventListUrl/{0}" -f $event.id
             Write-Host "Closing $($event.id), $($IncidentValue), $($externalId),  $($incident.assignee), $($incident.assigned_group)" 
             Write-Output "Closing $($event.id), $($IncidentValue), $($externalId),  $($incident.assignee), $($incident.assigned_group)" | Out-File -append "C:\Users\AskarZh\Desktop\CloseEvents $(get-date -f yyyy-MM-dd).txt"
-            #Invoke-WebRequest -Method Put -Uri $eventUrl -Headers $headers -Body $EventCloseXml -WebSession $omiSession
+            Invoke-WebRequest -Method Put -Uri $eventUrl -Headers $headers -Body $EventCloseXml -WebSession $omiSession
         }else{
             Write-Host "Event $($event.id) $($event.key) state:$($event.state) - Resolved in ESMT - $($incident.incident_number) - $incidentStatus"
             Write-Host "Resolution $($incident.resolution)"
